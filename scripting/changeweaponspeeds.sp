@@ -1,7 +1,7 @@
 #pragma semicolon 1
 
 #define PLUGIN_AUTHOR "Rachnus"
-#define PLUGIN_VERSION "1.0"
+#define PLUGIN_VERSION "1.01"
 
 #include <sourcemod>
 #include <sdktools>
@@ -63,6 +63,8 @@ EngineVersion g_Game;
 
 Handle g_hPlayerMaxSpeed = INVALID_HANDLE;
 
+ConVar g_WarmupOnly;
+
 int g_iPlayerSpeed[MAXPLAYERS + 1] =  { 250, ... };
 int g_iWeaponSpeeds[44] =  { 250,230,220,240,240,
 							 240,215,220,200,220, 
@@ -77,7 +79,7 @@ int g_iWeaponSpeeds[44] =  { 250,230,220,240,240,
 
 public Plugin myinfo = 
 {
-	name = "Change Weapon Speeds v1.0",
+	name = "Change Weapon Speeds v1.01",
 	author = PLUGIN_AUTHOR,
 	description = "Change the real speed of weapons (Not lagged movement speed)",
 	version = PLUGIN_VERSION,
@@ -93,7 +95,11 @@ public void OnPluginStart()
 	}
 	
 	HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
+	
 	RegAdminCmd("sm_reloadweaponspeeds", Command_ReloadWeaponSpeeds, ADMFLAG_ROOT);
+	
+	g_WarmupOnly = CreateConVar("changeweaponspeeds_warmup_only", "0", "Only change speeds on warmup");
+	
 	Handle hConf = LoadGameConfigFile("changeweaponspeeds.games");
 	int PlayerMaxSpeedOffset = GameConfGetOffset(hConf, "PlayerMaxSpeedOffset");
 	//DHOOK CCSPlayer::GetPlayerMaxSpeed 498
@@ -112,6 +118,10 @@ public void OnPluginStart()
 //Called when getting weapon player max speed
 public MRESReturn CCSPlayer_GetPlayerMaxSpeed(int pThis, Handle hReturn, Handle hParams)
 {
+	if(g_WarmupOnly.BoolValue)
+		if(!GameRules_GetProp("m_bWarmupPeriod"))
+			return MRES_Ignored;
+	
 	if(!IsValidClient(pThis) || !IsPlayerAlive(pThis))
 		return MRES_Ignored;
 	
